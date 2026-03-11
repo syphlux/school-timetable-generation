@@ -5,9 +5,20 @@ from app.models.request import SolveRequest
 from app.models.response import SolveResponse, SolvedSession
 from app.solver.preprocessor import preprocess, CandidateSlot
 
-SOLVER_TIME_LIMIT = 30.0  # seconds
+SOLVER_TIME_LIMIT = 20.0  # seconds
 SCALE = 1000
 
+# print new objective on new solution
+class SolutionPrinter(cp_model.CpSolverSolutionCallback):
+    def __init__(self, day_used_vars):
+        cp_model.CpSolverSolutionCallback.__init__(self)
+        self.day_used_vars = day_used_vars
+
+    def on_solution_callback(self):
+        day_used = [self.Value(v) for v in self.day_used_vars]
+        cost = sum((d + 1) * SCALE * day_used[d] for d in range(len(day_used)))
+        print(f"New solution with cost {cost} and days used: {sum(day_used)} (objective={self.ObjectiveValue()})")
+        
 
 def run_solver(req: SolveRequest) -> Optional[SolveResponse]:
     all_dates, topic_slots = preprocess(req)
@@ -131,15 +142,29 @@ def run_solver(req: SolveRequest) -> Optional[SolveResponse]:
         else:
             model.Add(day_used[d] == 0)
 
+    # Penalty for non-hour-aligned starts (secondary, never overrides day minimisation)
+    # :00 → 0, :30 → 1, :15/:45 → 2
+    SLOT_PENALTY = {0: 0, 30: 1, 15: 2, 45: 2}
+    slot_penalty_terms = []
+    for topic in req.topics:
+        for si in range(topic.num_sessions):
+            for sid, xvar in x[topic.id][si].items():
+                cs = slot_by_id[sid]
+                penalty = SLOT_PENALTY.get(cs.start_minute % 60, 0)
+                if penalty:
+                    slot_penalty_terms.append(penalty * xvar)
+
     cost = sum((d + 1) * SCALE * day_used[d] for d in range(num_days))
+    if slot_penalty_terms:
+        cost += sum(slot_penalty_terms)
     model.Minimize(cost)
 
     # ── Solve ─────────────────────────────────────────────────────────────────
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = SOLVER_TIME_LIMIT
-    solver.parameters.num_workers = 4
-
-    status = solver.Solve(model)
+    solver.parameters.max_time_in_seconds = 60
+    solver.parameters.num_workers = 16
+    print('Starting solver...')
+    status = solver.Solve(model, SolutionPrinter(day_used))
 
     if status == cp_model.INFEASIBLE:
         return SolveResponse(status="infeasible", sessions=[], warnings=["Problem is infeasible."], total_teaching_days=0)
