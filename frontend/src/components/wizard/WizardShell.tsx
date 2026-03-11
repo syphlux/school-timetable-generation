@@ -22,6 +22,10 @@ export function WizardShell({ onComplete }: Props) {
   const handleSolve = async () => {
     if (topics.length === 0) { addToast('Add at least one topic.', 'error'); return }
     if (teachers.length === 0) { addToast('Add at least one teacher.', 'error'); return }
+    const unnamedTopic = topics.find((t) => !t.name.trim())
+    if (unnamedTopic) { addToast('All topics must have a name.', 'error'); setStep(1); return }
+    const unnamedTeacher = teachers.find((t) => !t.name.trim())
+    if (unnamedTeacher) { addToast('All teachers must have a name.', 'error'); setStep(2); return }
     const result = await solve({ schedule, topics, teachers })
     if (result) {
       if (result.status === 'infeasible') {

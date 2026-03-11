@@ -5,6 +5,8 @@ interface TimetableStore {
   result: SolveResult | null
   setResult: (r: SolveResult) => void
   updateSession: (sessionId: string, patch: Partial<SolvedSession>) => void
+  addSession: (session: SolvedSession) => void
+  removeSession: (sessionId: string) => void
   swapSessions: (id1: string, id2: string) => void
   clear: () => void
 }
@@ -27,6 +29,23 @@ export const useTimetableStore = create<TimetableStore>((set) => ({
       }
     }),
 
+  addSession: (session) =>
+    set((state) => {
+      if (!state.result) return state
+      return { result: { ...state.result, sessions: [...state.result.sessions, session] } }
+    }),
+
+  removeSession: (sessionId) =>
+    set((state) => {
+      if (!state.result) return state
+      return {
+        result: {
+          ...state.result,
+          sessions: state.result.sessions.filter((s) => s.sessionId !== sessionId),
+        },
+      }
+    }),
+
   swapSessions: (id1, id2) =>
     set((state) => {
       if (!state.result) return state
@@ -38,10 +57,12 @@ export const useTimetableStore = create<TimetableStore>((set) => ({
           ...state.result,
           sessions: state.result.sessions.map((s) => {
             if (s.sessionId === id1) {
-              return { ...s, date: s2.date, startMinute: s2.startMinute, endMinute: s2.endMinute, roomIndex: s2.roomIndex }
+              const dur = s1.endMinute - s1.startMinute
+              return { ...s, date: s2.date, startMinute: s2.startMinute, endMinute: s2.startMinute + dur, roomIndex: s2.roomIndex }
             }
             if (s.sessionId === id2) {
-              return { ...s, date: s1.date, startMinute: s1.startMinute, endMinute: s1.endMinute, roomIndex: s1.roomIndex }
+              const dur = s2.endMinute - s2.startMinute
+              return { ...s, date: s1.date, startMinute: s1.startMinute, endMinute: s1.startMinute + dur, roomIndex: s1.roomIndex }
             }
             return s
           }),

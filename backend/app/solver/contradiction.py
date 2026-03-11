@@ -25,7 +25,7 @@ def check_contradictions(req: SolveRequest) -> Optional[str]:
         # Check that at least one date has an available teacher and a valid slot
         any_slot = False
         for d in all_dates:
-            wc = weekday_map.get(d.weekday())
+            wc = weekday_map.get(d.isoweekday() % 7)
             if wc is None:
                 continue
             starts = valid_slot_starts(wc.open_minute, wc.close_minute, topic.duration_minutes, wc.breaks)
@@ -43,7 +43,7 @@ def check_contradictions(req: SolveRequest) -> Optional[str]:
         total_needed = topic.num_sessions
         total_available_slots = 0
         for d in all_dates:
-            wc = weekday_map.get(d.weekday())
+            wc = weekday_map.get(d.isoweekday() % 7)
             if wc is None:
                 continue
             date_str = d.isoformat()

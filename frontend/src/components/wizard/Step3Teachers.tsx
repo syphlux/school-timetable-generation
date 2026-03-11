@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useWizardStore } from '../../store/wizardStore'
 import type { Teacher } from '../../types'
 import { generateId } from '../../lib/utils'
 import { Button } from '../ui/button'
-import { Input } from '../ui/input'
 import { Label } from '../ui/label'
 import { Badge } from '../ui/badge'
 
@@ -14,12 +13,22 @@ function newTeacher(): Teacher {
 export function Step3Teachers() {
   const { teachers, topics, addTeacher, updateTeacher, removeTeacher } = useWizardStore()
   const [editId, setEditId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | null>(null)
   const [newDate, setNewDate] = useState<Record<string, string>>({})
+  const nameRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+
+  useEffect(() => {
+    if (focusId) {
+      nameRefs.current.get(focusId)?.focus()
+      setFocusId(null)
+    }
+  }, [focusId])
 
   const handleAdd = () => {
-    const t = newTeacher()
+    const t = { ...newTeacher(), topicIds: topics.map((tp) => tp.id) }
     addTeacher(t)
     setEditId(t.id)
+    setFocusId(t.id)
   }
 
   const toggleTopic = (teacher: Teacher, topicId: string) => {
@@ -60,25 +69,23 @@ export function Step3Teachers() {
               className="flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-50"
               onClick={() => setEditId(editId === tc.id ? null : tc.id)}
             >
-              <span className="flex-1 font-medium text-sm">
-                {tc.name || <span className="text-gray-400 italic">Unnamed</span>}
-              </span>
-              <span className="text-xs text-gray-400">{tc.topicIds.length} topic(s)</span>
+              <input
+                ref={(el) => {
+                  if (el) nameRefs.current.set(tc.id, el)
+                  else nameRefs.current.delete(tc.id)
+                }}
+                value={tc.name}
+                onChange={(e) => updateTeacher(tc.id, { name: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="Unnamed"
+                className="w-48 font-medium text-sm bg-transparent border-b border-transparent focus:border-gray-400 focus:outline-none placeholder:text-gray-400 placeholder:italic"
+              />
+              <span className="text-xs text-gray-400 flex-shrink-0 ml-auto">{tc.topicIds.length} topic(s)</span>
               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); removeTeacher(tc.id) }}>✕</Button>
             </div>
 
             {editId === tc.id && (
               <div className="border-t p-4 bg-gray-50 space-y-4">
-                <div className="space-y-1">
-                  <Label>Name</Label>
-                  <Input
-                    value={tc.name}
-                    onChange={(e) => updateTeacher(tc.id, { name: e.target.value })}
-                    placeholder="e.g. Alice Smith"
-                    autoFocus
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <Label>Qualified topics</Label>
                   <div className="flex flex-wrap gap-2">

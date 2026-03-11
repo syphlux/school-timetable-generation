@@ -5,9 +5,8 @@ import { minutesToTime } from '../../lib/utils'
 
 interface Props {
   session: SolvedSession
-  openMinute: number
+  displayStart: number   // leftmost visible minute — used for pixel position
   pxPer15: number
-  isSwapMode: boolean
   isSwapSelected: boolean
   onSwapClick: (session: SolvedSession) => void
   onTeacherReassign: (session: SolvedSession) => void
@@ -15,27 +14,23 @@ interface Props {
 
 export function SessionBlock({
   session,
-  openMinute,
+  displayStart,
   pxPer15,
-  isSwapMode,
   isSwapSelected,
   onSwapClick,
   onTeacherReassign,
 }: Props) {
-  const left = ((session.startMinute - openMinute) / 15) * pxPer15
+  const left = ((session.startMinute - displayStart) / 15) * pxPer15
   const width = ((session.endMinute - session.startMinute) / 15) * pxPer15
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: session.sessionId,
     data: { session },
-    disabled: isSwapMode,
   })
 
   const handleClick = (e: React.MouseEvent) => {
-    if (isSwapMode) {
-      e.stopPropagation()
-      onSwapClick(session)
-    }
+    e.stopPropagation()
+    onSwapClick(session)
   }
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -46,24 +41,42 @@ export function SessionBlock({
   return (
     <div
       ref={setNodeRef}
-      {...(isSwapMode ? {} : { ...attributes, ...listeners })}
+      {...{ ...attributes, ...listeners }}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
-      className={`absolute top-1 bottom-1 rounded-md flex flex-col justify-center px-2 text-white text-xs font-medium select-none transition-all ${
-        isDragging ? 'opacity-50 shadow-lg z-50' : ''
-      } ${isSwapMode ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing'} ${
+      onContextMenu={(e) => e.stopPropagation()}
+      className={`absolute top-1 bottom-1 rounded-md flex flex-col justify-center px-2 text-xs font-medium select-none transition-opacity cursor-grab active:cursor-grabbing ${
         isSwapSelected ? 'ring-2 ring-yellow-400 ring-offset-1' : ''
       }`}
       style={{
         left,
         width: width - 2,
-        backgroundColor: session.color,
-        boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.2)' : undefined,
+        backgroundColor: isDragging ? 'transparent' : session.color,
+        border: isDragging ? `2px dashed ${session.color}` : undefined,
+        opacity: isDragging ? 0.45 : 1,
       }}
       title={`${session.topicName} — ${session.teacherName}\n${minutesToTime(session.startMinute)}–${minutesToTime(session.endMinute)}\nDouble-click to reassign teacher`}
     >
+      {!isDragging && (
+        <>
+          <div className="truncate font-semibold leading-tight text-white">{session.topicName}</div>
+          <div className="truncate leading-tight text-white/80">{session.teacherName}</div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Rendered inside DragOverlay — follows the cursor */
+export function SessionBlockOverlay({ session, pxPer15 }: { session: SolvedSession; pxPer15: number }) {
+  const width = ((session.endMinute - session.startMinute) / 15) * pxPer15
+  return (
+    <div
+      className="rounded-md flex flex-col justify-center px-2 text-white text-xs font-medium shadow-2xl cursor-grabbing"
+      style={{ width: width - 2, height: 40, backgroundColor: session.color, opacity: 0.92 }}
+    >
       <div className="truncate font-semibold leading-tight">{session.topicName}</div>
-      <div className="truncate opacity-80 leading-tight">{session.teacherName}</div>
+      <div className="truncate leading-tight opacity-80">{session.teacherName}</div>
     </div>
   )
 }

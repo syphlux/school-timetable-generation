@@ -34,7 +34,7 @@ def preprocess(req: SolveRequest) -> Tuple[List[date], Dict[str, List[CandidateS
     topic_slots: Dict[str, List[CandidateSlot]] = {topic.id: [] for topic in req.topics}
 
     for day_idx, d in enumerate(all_dates):
-        wc = weekday_map[d.weekday()]
+        wc = weekday_map[d.isoweekday() % 7]
         date_str = d.isoformat()
         for room_idx in range(req.schedule.num_rooms):
             for topic in req.topics:

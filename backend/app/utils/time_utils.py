@@ -12,7 +12,7 @@ def dates_in_range(start: str, end: str, enabled_weekdays: set) -> List[date]:
     current = parse_date(start)
     end_d = parse_date(end)
     while current <= end_d:
-        if current.weekday() in enabled_weekdays:
+        if current.isoweekday() % 7 in enabled_weekdays:
             result.append(current)
         current += timedelta(days=1)
     return result

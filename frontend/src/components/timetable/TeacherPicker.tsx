@@ -5,26 +5,41 @@ interface Props {
   session: SolvedSession | null
   teachers: Teacher[]
   allSessions: SolvedSession[]
+  maxSessionsPerDayPerTeacher: number
   onClose: () => void
   onAssign: (sessionId: string, teacher: Teacher) => void
 }
 
-export function TeacherPicker({ session, teachers, allSessions, onClose, onAssign }: Props) {
+export function TeacherPicker({ session, teachers, allSessions, maxSessionsPerDayPerTeacher, onClose, onAssign }: Props) {
   if (!session) return null
 
-  const qualified = teachers.filter((t) => t.topicIds.includes(session.topicId))
-
-  const hasConflict = (teacher: Teacher): boolean => {
-    if (teacher.unavailableDates.includes(session.date)) return true
-    return allSessions.some(
+  const options = teachers.map((t) => {
+    const isCurrent = t.id === session.teacherId
+    if (!t.topicIds.includes(session.topicId)) {
+      return { teacher: t, isCurrent, disabled: true, reason: `Does not teach ${session.topicName}` }
+    }
+    if (t.unavailableDates.includes(session.date)) {
+      return { teacher: t, isCurrent, disabled: true, reason: `Unavailable on ${session.date}` }
+    }
+    const dayCount = allSessions.filter(
+      (s) => s.teacherId === t.id && s.date === session.date && s.sessionId !== session.sessionId
+    ).length
+    if (dayCount >= maxSessionsPerDayPerTeacher) {
+      return { teacher: t, isCurrent, disabled: true, reason: `Already has the maximum ${maxSessionsPerDayPerTeacher} sessions that day` }
+    }
+    const conflict = allSessions.find(
       (s) =>
         s.sessionId !== session.sessionId &&
-        s.teacherId === teacher.id &&
+        s.teacherId === t.id &&
         s.date === session.date &&
         s.startMinute < session.endMinute &&
         s.endMinute > session.startMinute
     )
-  }
+    if (conflict) {
+      return { teacher: t, isCurrent, disabled: true, reason: `Already teaching ${conflict.topicName} at this time` }
+    }
+    return { teacher: t, isCurrent, disabled: false, reason: null }
+  })
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50" onClick={onClose}>
@@ -37,32 +52,28 @@ export function TeacherPicker({ session, teachers, allSessions, onClose, onAssig
           {session.topicName} — {session.date}
         </p>
         <div className="space-y-1">
-          {qualified.map((t) => {
-            const conflict = hasConflict(t)
-            const isCurrent = t.id === session.teacherId
-            return (
-              <button
-                key={t.id}
-                onClick={() => !conflict && onAssign(session.sessionId, t)}
-                disabled={conflict}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center justify-between transition-colors ${
-                  isCurrent
-                    ? 'bg-blue-50 border border-blue-200 font-medium'
-                    : conflict
-                    ? 'opacity-40 cursor-not-allowed bg-gray-100'
-                    : 'hover:bg-gray-100 cursor-pointer'
-                }`}
-              >
+          {options.map(({ teacher: t, isCurrent, disabled, reason }) => (
+            <button
+              key={t.id}
+              onClick={() => !disabled && onAssign(session.sessionId, t)}
+              disabled={disabled}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                isCurrent
+                  ? 'bg-blue-50 border border-blue-200 font-medium cursor-default'
+                  : disabled
+                  ? 'border border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'hover:bg-gray-100 cursor-pointer'
+              }`}
+            >
+              <div className="flex items-center justify-between">
                 <span>{t.name}</span>
-                <span className="text-xs text-gray-400">
-                  {isCurrent ? '(current)' : conflict ? 'conflict' : ''}
-                </span>
-              </button>
-            )
-          })}
-          {qualified.length === 0 && (
-            <p className="text-gray-400 text-sm py-2">No qualified teachers.</p>
-          )}
+                {isCurrent && <span className="text-xs text-blue-400">(current)</span>}
+              </div>
+              {disabled && reason && (
+                <div className="text-xs text-red-400 mt-0.5">{reason}</div>
+              )}
+            </button>
+          ))}
         </div>
         <Button variant="outline" size="sm" onClick={onClose} className="w-full mt-3">
           Cancel

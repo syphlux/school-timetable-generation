@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import { TimetableView } from '../components/timetable/TimetableView'
 import { ExportToolbar } from '../components/export/ExportToolbar'
 import { useTimetableStore } from '../store/timetableStore'
@@ -10,7 +10,6 @@ interface Props {
 export function TimetablePage({ onBack }: Props) {
   const { result } = useTimetableStore()
   const timetableRef = useRef<HTMLDivElement>(null)
-  const [isSwapMode, setIsSwapMode] = useState(false)
 
   if (!result) {
     return (
@@ -24,8 +23,6 @@ export function TimetablePage({ onBack }: Props) {
     <div className="min-h-screen bg-gray-50">
       <ExportToolbar
         timetableRef={timetableRef}
-        isSwapMode={isSwapMode}
-        onToggleSwap={() => setIsSwapMode((v) => !v)}
         onBack={onBack}
       />
 
@@ -38,11 +35,7 @@ export function TimetablePage({ onBack }: Props) {
       )}
 
       <div className="p-6 overflow-auto">
-        <TimetableView
-          timetableRef={timetableRef}
-          isSwapMode={isSwapMode}
-          onSwapModeChange={setIsSwapMode}
-        />
+        <TimetableView timetableRef={timetableRef} />
       </div>
     </div>
   )

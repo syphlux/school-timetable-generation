@@ -6,12 +6,10 @@ import { Button } from '../ui/button'
 
 interface Props {
   timetableRef: RefObject<HTMLDivElement | null>
-  isSwapMode: boolean
-  onToggleSwap: () => void
   onBack: () => void
 }
 
-export function ExportToolbar({ timetableRef, isSwapMode, onToggleSwap, onBack }: Props) {
+export function ExportToolbar({ timetableRef, onBack }: Props) {
   const { result } = useTimetableStore()
   const { schedule, topics, teachers } = useWizardStore()
   const { exportJSON, exportCSV, exportPNG } = useExport(timetableRef)
@@ -36,13 +34,6 @@ export function ExportToolbar({ timetableRef, isSwapMode, onToggleSwap, onBack }
       </div>
 
       <div className="flex items-center gap-2">
-        <Button
-          variant={isSwapMode ? 'secondary' : 'outline'}
-          size="sm"
-          onClick={onToggleSwap}
-        >
-          {isSwapMode ? 'Exit Swap' : 'Swap Sessions'}
-        </Button>
         <Button
           variant="outline"
           size="sm"

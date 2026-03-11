@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useWizardStore } from '../../store/wizardStore'
 import type { Topic } from '../../types'
 import { generateId, formatDuration } from '../../lib/utils'
@@ -22,11 +22,21 @@ function newTopic(idx: number): Topic {
 export function Step2Topics() {
   const { topics, addTopic, updateTopic, removeTopic } = useWizardStore()
   const [editId, setEditId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | null>(null)
+  const nameRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+
+  useEffect(() => {
+    if (focusId) {
+      nameRefs.current.get(focusId)?.focus()
+      setFocusId(null)
+    }
+  }, [focusId])
 
   const handleAdd = () => {
     const t = newTopic(topics.length)
     addTopic(t)
     setEditId(t.id)
+    setFocusId(t.id)
   }
 
   return (
@@ -50,10 +60,20 @@ export function Step2Topics() {
               onClick={() => setEditId(editId === t.id ? null : t.id)}
             >
               <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
-              <span className="flex-1 font-medium text-sm">
-                {t.name || <span className="text-gray-400 italic">Unnamed</span>}
+              <input
+                ref={(el) => {
+                  if (el) nameRefs.current.set(t.id, el)
+                  else nameRefs.current.delete(t.id)
+                }}
+                value={t.name}
+                onChange={(e) => updateTopic(t.id, { name: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                placeholder="Unnamed"
+                className="w-48 font-medium text-sm bg-transparent border-b border-transparent focus:border-gray-400 focus:outline-none placeholder:text-gray-400 placeholder:italic"
+              />
+              <span className="text-xs text-gray-400 flex-shrink-0 ml-auto">
+                {formatDuration(t.durationMinutes)} × {t.numSessions} session{t.numSessions !== 1 ? 's' : ''}
               </span>
-              <span className="text-xs text-gray-400">{formatDuration(t.durationMinutes)} × {t.numSessions} session{t.numSessions !== 1 ? 's' : ''}</span>
               <Button
                 variant="ghost"
                 size="sm"
@@ -66,15 +86,6 @@ export function Step2Topics() {
             {editId === t.id && (
               <div className="border-t p-4 bg-gray-50 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label>Name</Label>
-                    <Input
-                      value={t.name}
-                      onChange={(e) => updateTopic(t.id, { name: e.target.value })}
-                      placeholder="e.g. Mathematics"
-                      autoFocus
-                    />
-                  </div>
                   <div className="space-y-1">
                     <Label>Duration</Label>
                     <select
