@@ -106,6 +106,7 @@ export function TimetableView({ timetableRef }: Props) {
   const [activeSession, setActiveSession] = useState<SolvedSession | null>(null)
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null)
   const [createContext, setCreateContext] = useState<CreateContext | null>(null)
+  const [focusedTeacherIds, setFocusedTeacherIds] = useState<Set<string>>(new Set())
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -407,9 +408,54 @@ export function TimetableView({ timetableRef }: Props) {
     setCreateContext(null)
   }
 
+  // Unique teachers that appear in the timetable, in stable order
+  const timetableTeachers = Array.from(
+    new Map(result.sessions.map((s) => [s.teacherId, s.teacherName])).entries()
+  ).map(([id, name]) => ({ id, name }))
+
   return (
     <div onClick={() => setSwapFirst(null)}>
       <SwapOverlay selectedCount={swapFirst ? 1 : 0} />
+
+      {/* Teacher legend */}
+      {timetableTeachers.length > 0 && (
+        <div className="flex items-center gap-2 px-4 pt-2 pb-0 flex-wrap">
+          <span className="text-xs text-gray-400 mr-1">Filter:</span>
+          {timetableTeachers.map((t) => (
+            <button
+              key={t.id}
+              onClick={(e) => {
+                e.stopPropagation()
+                setFocusedTeacherIds((prev) => {
+                  const next = new Set(prev)
+                  if (next.has(t.id)) next.delete(t.id)
+                  else next.add(t.id)
+                  return next
+                })
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation()
+                setFocusedTeacherIds(new Set([t.id]))
+              }}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                focusedTeacherIds.has(t.id)
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {t.name}
+            </button>
+          ))}
+          {focusedTeacherIds.size > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setFocusedTeacherIds(new Set()) }}
+              className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer ml-1"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -441,6 +487,7 @@ export function TimetableView({ timetableRef }: Props) {
                 pxPer15={PX_PER_15}
                 sessions={daySessions}
                 swapSelectedId={swapFirst}
+                focusedTeacherIds={focusedTeacherIds}
                 onSwapClick={handleSwapClick}
                 onTeacherReassign={(s) => setReassignSession(s)}
                 onSlotRightClick={handleSlotRightClick}

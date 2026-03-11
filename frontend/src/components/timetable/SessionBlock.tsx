@@ -8,6 +8,7 @@ interface Props {
   displayStart: number   // leftmost visible minute — used for pixel position
   pxPer15: number
   isSwapSelected: boolean
+  focusedTeacherIds: Set<string>
   onSwapClick: (session: SolvedSession) => void
   onTeacherReassign: (session: SolvedSession) => void
 }
@@ -17,6 +18,7 @@ export function SessionBlock({
   displayStart,
   pxPer15,
   isSwapSelected,
+  focusedTeacherIds,
   onSwapClick,
   onTeacherReassign,
 }: Props) {
@@ -53,7 +55,7 @@ export function SessionBlock({
         width: width - 2,
         backgroundColor: isDragging ? 'transparent' : session.color,
         border: isDragging ? `2px dashed ${session.color}` : undefined,
-        opacity: isDragging ? 0.45 : 1,
+        opacity: isDragging ? 0.45 : focusedTeacherIds.size > 0 && !focusedTeacherIds.has(session.teacherId) ? 0.15 : 1,
       }}
       title={`${session.topicName} — ${session.teacherName}\n${minutesToTime(session.startMinute)}–${minutesToTime(session.endMinute)}\nDouble-click to reassign teacher`}
     >
