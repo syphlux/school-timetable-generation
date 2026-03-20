@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.models.request import SolveRequest
 from app.models.response import SolveResponse
 from app.solver.contradiction import check_contradictions
-from app.solver.cp_sat_solver import run_solver
+from app.solver.greedy_solver import run_solver
 
 router = APIRouter()
 

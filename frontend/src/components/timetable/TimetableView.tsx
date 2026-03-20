@@ -125,20 +125,26 @@ export function TimetableView({ timetableRef }: Props) {
   const firstDate = usedDates[0]
   const lastDate = usedDates[usedDates.length - 1]
 
-  // Fill all working days from first to last (shows intermediate empty days)
-  const filledDates: string[] = []
-  if (firstDate && lastDate) {
+  // Fill all calendar days from startDate to last session (includes disabled weekdays shown as shattered)
+  const rangeStart = schedule.startDate
+  const filledDates: { date: string; disabled: boolean }[] = []
+  if (rangeStart && lastDate) {
     const enabled = new Set<number>(schedule.weekdays.filter((w) => w.enabled).map((w) => w.weekday))
-    const d = new Date(firstDate + 'T00:00:00')
+    const d = new Date(rangeStart + 'T00:00:00')
     const end = new Date(lastDate + 'T00:00:00')
     while (d <= end) {
-      if (enabled.has(d.getDay())) filledDates.push(localDateStr(d))
+      const ds = localDateStr(d)
+      if (ds >= rangeStart) {
+        filledDates.push({ date: ds, disabled: !enabled.has(d.getDay()) })
+      }
       d.setDate(d.getDate() + 1)
     }
   }
 
   const emptyDay = lastDate ? nextWorkingDay(lastDate, schedule.weekdays) : null
-  const sortedDates = emptyDay ? [...filledDates, emptyDay] : filledDates
+  const sortedDates: { date: string; disabled: boolean }[] = emptyDay
+    ? [...filledDates, { date: emptyDay, disabled: false }]
+    : filledDates
 
   // Display range: earliest open - 1h … latest close + 1h (shared across all days)
   const enabledWeekdays = schedule.weekdays.filter((w) => w.enabled)
@@ -202,6 +208,7 @@ export function TimetableView({ timetableRef }: Props) {
     over: DragMoveEvent['over'],
   ): DropPreview | null => {
     if (!over) return null
+    if (over.data.current?.disabled) return null
     const dropData = over.data.current as DropData | undefined
     if (!dropData) return null
 
@@ -241,6 +248,13 @@ export function TimetableView({ timetableRef }: Props) {
     if (over.id === 'session-delete-bin') {
       removeSession(session.sessionId)
       addToast(`Session deleted.`, 'success')
+      return
+    }
+
+    if (over.data.current?.disabled) {
+      const weekdayName = new Date((over.data.current.date as string) + 'T00:00:00')
+        .toLocaleDateString('en-US', { weekday: 'long' })
+      addToast(`${weekdayName} is a disabled day.`, 'error')
       return
     }
 
@@ -465,7 +479,7 @@ export function TimetableView({ timetableRef }: Props) {
         onDragCancel={handleDragCancel}
       >
         <div ref={timetableRef} className="p-4 bg-white min-w-max">
-          {sortedDates.map((date) => {
+          {sortedDates.map(({ date, disabled }) => {
             const daySessions = sessionsByDate.get(date) || []
             const wc = dayConfig(date)
             const workStart = wc?.openMinute  ?? globalOpen
@@ -478,6 +492,7 @@ export function TimetableView({ timetableRef }: Props) {
               <DayColumn
                 key={date}
                 date={date}
+                disabled={disabled}
                 numRooms={schedule.numRooms}
                 displayStart={displayStart}
                 displayEnd={displayEnd}
