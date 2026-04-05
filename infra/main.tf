@@ -198,7 +198,7 @@ resource "aws_lb_listener" "https" {
 # ── ACM certificate ───────────────────────────────────────────────────────────
 
 resource "aws_acm_certificate" "app" {
-  domain_name       = "classr.syphaxaitouibelli.com"
+  domain_name       = "classr.syphaxaitoubelli.com"
   validation_method = "DNS"
 
   lifecycle {

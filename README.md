@@ -2,7 +2,7 @@
 
 A browser-based school timetable generator. Configure your schedule, topics, and teachers — then let the solver find an optimised timetable automatically.
 
-**Live:** https://classr.syphaxaitouibelli.com
+**Live:** https://classr.syphaxaitoubelli.com
 
 ---
 

@@ -1,6 +1,6 @@
 output "app_url" {
   description = "Public URL of the deployed application."
-  value       = "https://classr.syphaxaitouibelli.com"
+  value       = "https://classr.syphaxaitoubelli.com"
 }
 
 output "alb_dns_name" {
