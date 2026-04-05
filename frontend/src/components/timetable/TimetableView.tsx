@@ -107,6 +107,7 @@ export function TimetableView({ timetableRef }: Props) {
   const [dropPreview, setDropPreview] = useState<DropPreview | null>(null)
   const [createContext, setCreateContext] = useState<CreateContext | null>(null)
   const [focusedTeacherIds, setFocusedTeacherIds] = useState<Set<string>>(new Set())
+  const [focusedTopicIds, setFocusedTopicIds] = useState<Set<string>>(new Set())
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
@@ -122,7 +123,6 @@ export function TimetableView({ timetableRef }: Props) {
   }
 
   const usedDates = Array.from(sessionsByDate.keys()).sort()
-  const firstDate = usedDates[0]
   const lastDate = usedDates[usedDates.length - 1]
 
   // Fill all calendar days from startDate to last session (includes disabled weekdays shown as shattered)
@@ -422,50 +422,97 @@ export function TimetableView({ timetableRef }: Props) {
     setCreateContext(null)
   }
 
-  // Unique teachers that appear in the timetable, in stable order
+  // Unique teachers and topics that appear in the timetable, in stable order
   const timetableTeachers = Array.from(
     new Map(result.sessions.map((s) => [s.teacherId, s.teacherName])).entries()
   ).map(([id, name]) => ({ id, name }))
+
+  const timetableTopics = Array.from(
+    new Map(result.sessions.map((s) => [s.topicId, { name: s.topicName, color: s.color }])).entries()
+  ).map(([id, { name, color }]) => ({ id, name, color }))
 
   return (
     <div onClick={() => setSwapFirst(null)}>
       <SwapOverlay selectedCount={swapFirst ? 1 : 0} />
 
-      {/* Teacher legend */}
-      {timetableTeachers.length > 0 && (
-        <div className="flex items-center gap-2 px-4 pt-2 pb-0 flex-wrap">
-          <span className="text-xs text-gray-400 mr-1">Filter:</span>
-          {timetableTeachers.map((t) => (
+      {/* Filter bar */}
+      {(timetableTeachers.length > 0 || timetableTopics.length > 0) && (
+        <div className="flex flex-col gap-1.5 px-4 pt-2 pb-0">
+          {timetableTeachers.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400 w-14 flex-shrink-0">Teachers</span>
+              {timetableTeachers.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setFocusedTeacherIds((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(t.id)) next.delete(t.id)
+                      else next.add(t.id)
+                      return next
+                    })
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    setFocusedTeacherIds(new Set([t.id]))
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                    focusedTeacherIds.has(t.id)
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {timetableTopics.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-400 w-14 flex-shrink-0">Topics</span>
+              {timetableTopics.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setFocusedTopicIds((prev) => {
+                      const next = new Set(prev)
+                      if (next.has(t.id)) next.delete(t.id)
+                      else next.add(t.id)
+                      return next
+                    })
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation()
+                    setFocusedTopicIds(new Set([t.id]))
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                    focusedTopicIds.has(t.id)
+                      ? 'text-white border-transparent'
+                      : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  style={focusedTopicIds.has(t.id) ? { backgroundColor: t.color, borderColor: t.color } : {}}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: focusedTopicIds.has(t.id) ? 'rgba(255,255,255,0.7)' : t.color }}
+                  />
+                  {t.name}
+                </button>
+              ))}
+            </div>
+          )}
+          {(focusedTeacherIds.size > 0 || focusedTopicIds.size > 0) && (
             <button
-              key={t.id}
               onClick={(e) => {
                 e.stopPropagation()
-                setFocusedTeacherIds((prev) => {
-                  const next = new Set(prev)
-                  if (next.has(t.id)) next.delete(t.id)
-                  else next.add(t.id)
-                  return next
-                })
+                setFocusedTeacherIds(new Set())
+                setFocusedTopicIds(new Set())
               }}
-              onDoubleClick={(e) => {
-                e.stopPropagation()
-                setFocusedTeacherIds(new Set([t.id]))
-              }}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-                focusedTeacherIds.has(t.id)
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              }`}
+              className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer self-start ml-16"
             >
-              {t.name}
-            </button>
-          ))}
-          {focusedTeacherIds.size > 0 && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setFocusedTeacherIds(new Set()) }}
-              className="text-xs text-gray-400 hover:text-gray-600 cursor-pointer ml-1"
-            >
-              Clear
+              Clear all
             </button>
           )}
         </div>
@@ -503,6 +550,7 @@ export function TimetableView({ timetableRef }: Props) {
                 sessions={daySessions}
                 swapSelectedId={swapFirst}
                 focusedTeacherIds={focusedTeacherIds}
+                focusedTopicIds={focusedTopicIds}
                 onSwapClick={handleSwapClick}
                 onTeacherReassign={(s) => setReassignSession(s)}
                 onSlotRightClick={handleSlotRightClick}

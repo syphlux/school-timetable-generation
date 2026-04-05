@@ -22,6 +22,7 @@ interface Props {
   sessions: SolvedSession[]
   swapSelectedId: string | null
   focusedTeacherIds: Set<string>
+  focusedTopicIds: Set<string>
   onSwapClick: (s: SolvedSession) => void
   onTeacherReassign: (s: SolvedSession) => void
   onSlotRightClick: (date: string, roomIndex: number, minute: number) => void
@@ -43,6 +44,7 @@ export function RoomLane({
   sessions,
   swapSelectedId,
   focusedTeacherIds,
+  focusedTopicIds,
   onSwapClick,
   onTeacherReassign,
   onSlotRightClick,
@@ -146,6 +148,7 @@ export function RoomLane({
             pxPer15={pxPer15}
             isSwapSelected={swapSelectedId === s.sessionId}
             focusedTeacherIds={focusedTeacherIds}
+            focusedTopicIds={focusedTopicIds}
             onSwapClick={onSwapClick}
             onTeacherReassign={onTeacherReassign}
           />

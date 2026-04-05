@@ -18,7 +18,6 @@ function toApiPayload(data: WizardData) {
         })),
       })),
       start_date: data.schedule.startDate,
-      end_date: data.schedule.endDate,
       max_sessions_per_day_per_teacher: data.schedule.maxSessionsPerDayPerTeacher,
     },
     topics: data.topics.map((t) => ({
@@ -59,17 +58,19 @@ function fromApiResponse(data: unknown): SolveResult {
   }
 }
 
+export type SolverType = 'heuristic' | 'cpsat'
+
 export function useSolver() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const setResult = useTimetableStore((s) => s.setResult)
 
-  const solve = async (data: WizardData) => {
+  const solve = async (data: WizardData, solverType: SolverType = 'heuristic', timeLimitSeconds = 30) => {
     setLoading(true)
     setError(null)
     try {
-      const payload = toApiPayload(data)
-      const raw = await apiPost<unknown>('/solve', payload)
+      const payload = { ...toApiPayload(data), time_limit_seconds: timeLimitSeconds }
+      const raw = await apiPost<unknown>(`/solve/${solverType}`, payload)
       const result = fromApiResponse(raw)
       setResult(result)
       return result

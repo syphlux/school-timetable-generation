@@ -14,7 +14,6 @@ def make_request():
                 WeekdayConfig(weekday=2, enabled=True, open_minute=480, close_minute=1020, breaks=[]),
             ],
             start_date="2026-03-16",
-            end_date="2026-03-20",
             max_sessions_per_day_per_teacher=3,
         ),
         topics=[
@@ -36,7 +35,7 @@ def test_no_contradiction():
 
 def test_solver_runs():
     req = make_request()
-    result = run_solver(req)
+    result = run_solver(req, end_date="2026-03-20")
     assert result is not None
     assert result.status in ("optimal", "feasible")
     assert len(result.sessions) == 5  # 2 + 3 sessions
@@ -44,7 +43,7 @@ def test_solver_runs():
 
 def test_solver_sessions_no_overlap():
     req = make_request()
-    result = run_solver(req)
+    result = run_solver(req, end_date="2026-03-20")
     assert result is not None
     # Check no two sessions overlap in same room on same day
     from collections import defaultdict

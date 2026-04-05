@@ -1,4 +1,5 @@
-FROM node:20-alpine
+# ── Stage 1: build ────────────────────────────────────────────────────────────
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
@@ -7,7 +8,19 @@ RUN npm ci
 
 COPY . .
 
-ENV VITE_API_URL=http://localhost:8000
+# Empty VITE_API_URL → all fetch calls are relative (/solve/...) so CloudFront
+# routes them to the ALB backend origin. Set to http://localhost:8000 for local.
+ARG VITE_API_URL=""
+ENV VITE_API_URL=$VITE_API_URL
 
-EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host"]
+RUN npm run build
+
+# ── Stage 2: serve ─────────────────────────────────────────────────────────────
+FROM nginx:1.27-alpine
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

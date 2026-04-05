@@ -2,7 +2,6 @@
 import { useWizardStore } from '../../store/wizardStore'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
-import { DateRangePicker } from '../shared/DateRangePicker'
 import { TimeRangePicker } from '../shared/TimeRangePicker'
 import { BreakEditor } from '../shared/BreakEditor'
 
@@ -38,12 +37,16 @@ export function Step1Schedule() {
         </div>
       </div>
 
-      <DateRangePicker
-        startDate={schedule.startDate}
-        endDate={schedule.endDate}
-        onChangeStart={(d) => setSchedule({ startDate: d })}
-        onChangeEnd={(d) => setSchedule({ endDate: d })}
-      />
+      <div className="space-y-1">
+        <Label>Start date</Label>
+        <input
+          type="date"
+          value={schedule.startDate}
+          onChange={(e) => setSchedule({ startDate: e.target.value })}
+          className="border border-gray-300 rounded px-2 py-1.5 text-sm cursor-pointer hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <p className="text-xs text-gray-400">End date is determined automatically by the solver.</p>
+      </div>
 
       <div className="space-y-3">
         <Label>Weekday settings</Label>

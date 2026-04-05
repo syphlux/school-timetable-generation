@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import date, timedelta
 from app.models.request import SolveRequest
 from app.utils.time_utils import dates_in_range, valid_slot_starts
 
@@ -8,10 +9,14 @@ def check_contradictions(req: SolveRequest) -> Optional[str]:
 
     enabled_weekdays = {wc.weekday for wc in req.schedule.weekdays if wc.enabled}
     weekday_map = {wc.weekday: wc for wc in req.schedule.weekdays if wc.enabled}
-    all_dates = dates_in_range(req.schedule.start_date, req.schedule.end_date, enabled_weekdays)
 
-    if not all_dates:
-        return "No enabled weekdays fall within the specified date range."
+    if not enabled_weekdays:
+        return "No weekdays are enabled."
+
+    # Use a generous 1-year horizon for arithmetic feasibility checks
+    start = date.fromisoformat(req.schedule.start_date)
+    horizon = (start + timedelta(days=365)).isoformat()
+    all_dates = dates_in_range(req.schedule.start_date, horizon, enabled_weekdays)
 
     teacher_topics = {t.id: set(t.topic_ids) for t in req.teachers}
     teacher_unavail = {t.id: set(t.unavailable_dates) for t in req.teachers}

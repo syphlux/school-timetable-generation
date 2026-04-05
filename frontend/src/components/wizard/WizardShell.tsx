@@ -1,6 +1,7 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useWizardStore } from '../../store/wizardStore'
 import { useSolver } from '../../hooks/useSolver'
+import type { SolverType } from '../../hooks/useSolver'
 import { Step1Schedule } from './Step1Schedule'
 import { Step2Topics } from './Step2Topics'
 import { Step3Teachers } from './Step3Teachers'
@@ -15,9 +16,28 @@ interface Props {
 
 export function WizardShell({ onComplete }: Props) {
   const [step, setStep] = useState(0)
+  const [solverType, setSolverType] = useState<SolverType>('heuristic')
+  const [timeLimitSeconds, setTimeLimitSeconds] = useState(30)
+  const [elapsed, setElapsed] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const { schedule, topics, teachers } = useWizardStore()
   const { solve, loading, error } = useSolver()
   const { addToast } = useToast()
+
+  useEffect(() => {
+    if (loading && solverType === 'cpsat') {
+      setElapsed(0)
+      intervalRef.current = setInterval(() => setElapsed((e) => e + 1), 1000)
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
+  }, [loading, solverType])
 
   const handleSolve = async () => {
     if (topics.length === 0) { addToast('Add at least one topic.', 'error'); return }
@@ -26,7 +46,7 @@ export function WizardShell({ onComplete }: Props) {
     if (unnamedTopic) { addToast('All topics must have a name.', 'error'); setStep(1); return }
     const unnamedTeacher = teachers.find((t) => !t.name.trim())
     if (unnamedTeacher) { addToast('All teachers must have a name.', 'error'); setStep(2); return }
-    const result = await solve({ schedule, topics, teachers })
+    const result = await solve({ schedule, topics, teachers }, solverType, timeLimitSeconds)
     if (result) {
       if (result.status === 'infeasible') {
         addToast('No feasible timetable found. Check your constraints.', 'error')
@@ -94,14 +114,75 @@ export function WizardShell({ onComplete }: Props) {
             Next →
           </Button>
         ) : (
-          <Button
-            size="lg"
-            onClick={handleSolve}
-            disabled={loading}
-            className="px-8 font-semibold"
-          >
-            {loading ? 'Solving…' : '✦ Generate Timetable'}
-          </Button>
+          <div className="flex items-center gap-3">
+            {/* Solver toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
+              <button
+                type="button"
+                onClick={() => setSolverType('heuristic')}
+                disabled={loading}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
+                  solverType === 'heuristic'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Heuristic
+              </button>
+              <button
+                type="button"
+                onClick={() => setSolverType('cpsat')}
+                disabled={loading}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer disabled:cursor-not-allowed ${
+                  solverType === 'cpsat'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                CP-SAT
+              </button>
+            </div>
+
+            {/* CP-SAT time limit: input or countdown */}
+            {solverType === 'cpsat' && (
+              loading ? (
+                <div className="flex flex-col gap-1 w-36">
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Solving…</span>
+                    <span>{Math.max(timeLimitSeconds - elapsed, 0)}s left</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 rounded-full transition-all duration-1000 ease-linear"
+                      style={{ width: `${Math.min((elapsed / timeLimitSeconds) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs text-gray-500 whitespace-nowrap">Time limit</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={160}
+                    value={timeLimitSeconds}
+                    onChange={(e) => setTimeLimitSeconds(Math.min(300, Math.max(5, Number(e.target.value))))}
+                    className="w-16 px-2 py-1.5 text-sm border border-gray-300 rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-xs text-gray-500">s</span>
+                </div>
+              )
+            )}
+
+            <Button
+              size="lg"
+              onClick={handleSolve}
+              disabled={loading}
+              className="px-8 font-semibold"
+            >
+              {loading ? 'Solving…' : '✦ Generate Timetable'}
+            </Button>
+          </div>
         )}
       </div>
 

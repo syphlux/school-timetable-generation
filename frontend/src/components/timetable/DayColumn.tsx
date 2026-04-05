@@ -45,6 +45,7 @@ interface Props {
   sessions: SolvedSession[]
   swapSelectedId: string | null
   focusedTeacherIds: Set<string>
+  focusedTopicIds: Set<string>
   onSwapClick: (s: SolvedSession) => void
   onTeacherReassign: (s: SolvedSession) => void
   onSlotRightClick: (date: string, roomIndex: number, minute: number) => void
@@ -64,6 +65,7 @@ export function DayColumn({
   sessions,
   swapSelectedId,
   focusedTeacherIds,
+  focusedTopicIds,
   onSwapClick,
   onTeacherReassign,
   onSlotRightClick,
@@ -131,6 +133,7 @@ export function DayColumn({
             sessions={sessions.filter((s) => s.roomIndex === i)}
             swapSelectedId={swapSelectedId}
             focusedTeacherIds={focusedTeacherIds}
+            focusedTopicIds={focusedTopicIds}
             onSwapClick={onSwapClick}
             onTeacherReassign={onTeacherReassign}
             onSlotRightClick={onSlotRightClick}

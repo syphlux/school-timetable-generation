@@ -30,17 +30,28 @@ export function useExport(timetableRef: RefObject<HTMLDivElement | null>) {
 
   const exportPNG = async () => {
     if (!timetableRef.current) return
-    const { default: html2canvas } = await import('html2canvas')
+    const { toPng } = await import('html-to-image')
     const el = timetableRef.current
-    const prevOverflow = el.style.overflow
+    const parent = el.parentElement
+
+    const prevElOverflow = el.style.overflow
+    const prevParentOverflow = parent?.style.overflow ?? ''
     el.style.overflow = 'visible'
+    if (parent) parent.style.overflow = 'visible'
+
     try {
-      const canvas = await html2canvas(el, { scale: 2, useCORS: true })
-      canvas.toBlob((blob) => {
-        if (blob) download(blob, 'timetable.png')
+      const dataUrl = await toPng(el, {
+        pixelRatio: 2,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        style: { overflow: 'visible' },
       })
+      const res = await fetch(dataUrl)
+      const blob = await res.blob()
+      download(blob, 'timetable.png')
     } finally {
-      el.style.overflow = prevOverflow
+      el.style.overflow = prevElOverflow
+      if (parent) parent.style.overflow = prevParentOverflow
     }
   }
 
@@ -52,6 +63,8 @@ function download(blob: Blob, filename: string) {
   const a = document.createElement('a')
   a.href = url
   a.download = filename
+  document.body.appendChild(a)
   a.click()
-  URL.revokeObjectURL(url)
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 100)
 }

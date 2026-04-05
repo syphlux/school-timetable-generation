@@ -19,7 +19,6 @@ class ScheduleConfig(BaseModel):
     num_rooms: int = Field(..., ge=1)
     weekdays: List[WeekdayConfig]
     start_date: str  # "YYYY-MM-DD"
-    end_date: str
     max_sessions_per_day_per_teacher: int = Field(default=3, ge=1)
 
 
@@ -42,3 +41,4 @@ class SolveRequest(BaseModel):
     schedule: ScheduleConfig
     topics: List[Topic]
     teachers: List[Teacher]
+    time_limit_seconds: int = Field(default=30, ge=5, le=160)

@@ -16,7 +16,6 @@ export function WizardPage({ onComplete }: Props) {
     setSchedule({
       numRooms: data.schedule.numRooms,
       startDate: data.schedule.startDate,
-      endDate: data.schedule.endDate,
       maxSessionsPerDayPerTeacher: data.schedule.maxSessionsPerDayPerTeacher,
     })
     data.schedule.weekdays.forEach((wc, i) => setWeekday(i, wc))

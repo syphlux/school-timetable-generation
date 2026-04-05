@@ -15,7 +15,6 @@ export interface ScheduleConfig {
   numRooms: number
   weekdays: WeekdayConfig[]
   startDate: string
-  endDate: string
   maxSessionsPerDayPerTeacher: number
 }
 

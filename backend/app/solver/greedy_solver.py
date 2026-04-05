@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from typing import Optional
 import datetime
@@ -5,6 +6,8 @@ import random
 
 from app.models.request import SolveRequest, Teacher, Topic
 from app.models.response import SolveResponse, SolvedSession
+
+logger = logging.getLogger(__name__)
 
 
 def is_available_slot(
@@ -79,7 +82,7 @@ def run_solver(req: SolveRequest) -> Optional[SolveResponse]:
                 # try all possible start times for this topic on this date and room
                 start_minute = req.schedule.weekdays[weekday].open_minute
                 while start_minute + topic.duration_minutes <= req.schedule.weekdays[weekday].close_minute:
-                    print(start_minute, topic.duration_minutes, req.schedule.weekdays[weekday].close_minute)
+                    logger.debug("greedy_trying_slot", extra={"start_minute": start_minute, "duration": topic.duration_minutes})
                     if not is_available_slot(req, weekday, start_minute, topic.duration_minutes, sessions_by_date_room[(date_str, room_index)]):
                         start_minute += 15
                         continue
@@ -119,7 +122,7 @@ def run_solver(req: SolveRequest) -> Optional[SolveResponse]:
                 # move to next day
                 curr_date += datetime.timedelta(days=1)
     total_teaching_days = len(set(s.date for s in sessions))
-    print(sessions)
+    logger.info("greedy_solver_done", extra={"num_sessions": len(sessions), "total_teaching_days": total_teaching_days})
     return SolveResponse(
         status="feasible",
         sessions=sessions,

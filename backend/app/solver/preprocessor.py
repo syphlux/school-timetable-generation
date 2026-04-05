@@ -15,7 +15,7 @@ class CandidateSlot:
     end_minute: int
 
 
-def preprocess(req: SolveRequest) -> Tuple[List[date], Dict[str, List[CandidateSlot]]]:
+def preprocess(req: SolveRequest, end_date: str) -> Tuple[List[date], Dict[str, List[CandidateSlot]]]:
     """
     Returns:
       - ordered list of calendar dates
@@ -24,7 +24,7 @@ def preprocess(req: SolveRequest) -> Tuple[List[date], Dict[str, List[CandidateS
     enabled_weekdays = {wc.weekday for wc in req.schedule.weekdays if wc.enabled}
     weekday_map: Dict[int, WeekdayConfig] = {wc.weekday: wc for wc in req.schedule.weekdays if wc.enabled}
 
-    all_dates = dates_in_range(req.schedule.start_date, req.schedule.end_date, enabled_weekdays)
+    all_dates = dates_in_range(req.schedule.start_date, end_date, enabled_weekdays)
 
     # Teacher availability index
     teacher_unavail: Dict[str, set] = {t.id: set(t.unavailable_dates) for t in req.teachers}

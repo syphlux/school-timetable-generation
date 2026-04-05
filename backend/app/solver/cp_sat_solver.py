@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import List, Optional, Dict, Tuple
 from ortools.sat.python import cp_model
@@ -5,10 +6,10 @@ from app.models.request import SolveRequest
 from app.models.response import SolveResponse, SolvedSession
 from app.solver.preprocessor import preprocess, CandidateSlot
 
-SOLVER_TIME_LIMIT = 20.0  # seconds
+logger = logging.getLogger(__name__)
 SCALE = 1000
 
-# print new objective on new solution
+
 class SolutionPrinter(cp_model.CpSolverSolutionCallback):
     def __init__(self, day_used_vars):
         cp_model.CpSolverSolutionCallback.__init__(self)
@@ -16,12 +17,17 @@ class SolutionPrinter(cp_model.CpSolverSolutionCallback):
 
     def on_solution_callback(self):
         day_used = [self.Value(v) for v in self.day_used_vars]
+        days_used = sum(day_used)
         cost = sum((d + 1) * SCALE * day_used[d] for d in range(len(day_used)))
-        print(f"New solution with cost {cost} and days used: {sum(day_used)} (objective={self.ObjectiveValue()})")
-        
+        logger.info("cpsat_new_solution", extra={
+            "days_used": days_used,
+            "cost": cost,
+            "objective": self.ObjectiveValue(),
+        })
 
-def run_solver(req: SolveRequest) -> Optional[SolveResponse]:
-    all_dates, topic_slots = preprocess(req)
+
+def run_solver(req: SolveRequest, end_date: str, hint: Optional[SolveResponse] = None) -> Optional[SolveResponse]:
+    all_dates, topic_slots = preprocess(req, end_date)
     warnings: List[str] = []
 
     if not all_dates:
@@ -159,11 +165,34 @@ def run_solver(req: SolveRequest) -> Optional[SolveResponse]:
         cost += sum(slot_penalty_terms)
     model.Minimize(cost)
 
+    # ── Warm-start hints from heuristic solution ──────────────────────────────
+    if hint is not None:
+        for topic in req.topics:
+            slot_key_map: Dict[Tuple[str, int, int], CandidateSlot] = {
+                (cs.date, cs.room_index, cs.start_minute): cs
+                for cs in topic_slots[topic.id]
+            }
+            for s in hint.sessions:
+                if s.topic_id != topic.id:
+                    continue
+                cs = slot_key_map.get((s.date, s.room_index, s.start_minute))
+                if cs is None:
+                    continue
+                si = s.session_index
+                if si not in x[topic.id] or cs.slot_id not in x[topic.id][si]:
+                    continue
+                model.AddHint(x[topic.id][si][cs.slot_id], 1)
+                if cs.slot_id in y[topic.id][si] and s.teacher_id in y[topic.id][si][cs.slot_id]:
+                    model.AddHint(y[topic.id][si][cs.slot_id][s.teacher_id], 1)
+
     # ── Solve ─────────────────────────────────────────────────────────────────
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 60
-    solver.parameters.num_workers = 16
-    print('Starting solver...')
+    solver.parameters.max_time_in_seconds = req.time_limit_seconds
+    solver.parameters.num_workers = 2  # matches Fargate task vCPU count
+    logger.info("cpsat_solver_starting", extra={
+        "num_dates": len(all_dates),
+        "time_limit_seconds": req.time_limit_seconds,
+    })
     status = solver.Solve(model, SolutionPrinter(day_used))
 
     if status == cp_model.INFEASIBLE:

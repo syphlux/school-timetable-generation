@@ -28,7 +28,6 @@ const defaultSchedule: ScheduleConfig = {
   numRooms: 2,
   weekdays: defaultWeekdays,
   startDate: new Date().toISOString().slice(0, 10),
-  endDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
   maxSessionsPerDayPerTeacher: 3,
 }
 
